@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+#
+# spaces2tabs.sh - Convert leading space indentation to tabs.
+#
+# The indentation width is auto-detected per file (2, 3, 4 or 8 spaces), so a
+# 2-space-indented file and a 4-space-indented file both become one tab per
+# indent level. Use -s N to force a width instead.
+#
+# Only the indentation at the start of each line is touched; spaces elsewhere
+# in a line are left alone. Mixed tab/space indentation is normalised.
+# Leftover spaces that don't fill a whole indent level are kept as spaces.
+#
+# Usage:
+#   ./spaces2tabs.sh file1.py file2.js       # auto-detect the indent width per file
+#   ./spaces2tabs.sh -s 2 app.js             # force: every 2 spaces = 1 tab
+#   ./spaces2tabs.sh -r src/                 # convert all files in a directory, recursively
+#   ./spaces2tabs.sh -n -r .                 # dry run: list files that would change
+#
+# Options:
+#   -s N  Spaces per tab, or "auto" to detect per file (default: auto)
+#   -r    Recurse into directories
+#   -n    Dry run (don't modify anything)
+#   -h    Show this help
+
+set -euo pipefail
+
+width="auto"
+recursive=false
+dry_run=false
+
+usage() {
+  sed -n '3,/^$/p' "$0" | sed 's/^# \{0,1\}//'
+  exit "${1:-0}"
+}
+
+while getopts "s:rnh" opt; do
+  case "$opt" in
+    s) width="$OPTARG" ;;
+    r) recursive=true ;;
+    n) dry_run=true ;;
+    h) usage 0 ;;
+    *) usage 1 ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+[[ $# -eq 0 ]] && usage 1
+
+if [[ "$width" != "auto" ]] && ! [[ "$width" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Error: -s must be a positive integer or 'auto' (got '$width')" >&2
+  exit 1
+fi
+
+converted=0
+
+# Guess a file's indent width: look at how far indentation steps *in* from one
+# line to the next, and pick the most common step among 2, 3, 4 and 8.
+# Lines indented with tabs, and blank lines, are ignored. Falls back to 4.
+detect_width() {
+  perl -ne '
+    next if /^\s*$/;
+    if    (/^( +)\S/) { $w = length($1) }
+    elsif (/^\S/)     { $w = 0 }
+    else              { next }
+    $c{$w - $prev}++ if defined $prev && $w > $prev && $w - $prev =~ /^(2|3|4|8)$/;
+    $prev = $w;
+    END {
+      my ($best) = sort { $c{$b} <=> $c{$a} || $a <=> $b } keys %c;
+      print $best // 4;
+    }
+  ' "$1"
+}
+
+# Rewrites leading whitespace as tabs (+ leftover spaces), line by line.
+# Tabs already present advance to the next tab stop, so mixed indentation works.
+# perl -p keeps a missing trailing newline at end-of-file as-is.
+to_tabs() {
+  TAB_WIDTH="$2" perl -pe '
+    BEGIN { $n = $ENV{TAB_WIDTH} }
+    s{^([ \t]+)}{
+      my $w = 0;
+      for my $c (split //, $1) { $w += ($c eq "\t") ? $n - ($w % $n) : 1 }
+      ("\t" x int($w / $n)) . (" " x ($w % $n))
+    }e;
+  ' "$1"
+}
+
+convert_file() {
+  local file="$1" w
+
+  # Skip binary files (grep -I treats binary files as non-matching)
+  if ! grep -Iq . "$file" 2>/dev/null; then
+    return
+  fi
+
+  if [[ "$width" == "auto" ]]; then
+    w="$(detect_width "$file")"
+  else
+    w="$width"
+  fi
+
+  local tmp
+  tmp="$(mktemp)"
+  to_tabs "$file" "$w" > "$tmp"
+
+  # Skip files that wouldn't change
+  if cmp -s "$file" "$tmp"; then
+    rm -f "$tmp"
+    return
+  fi
+
+  if $dry_run; then
+    echo "Would convert: $file ($w spaces = 1 tab)"
+  else
+    # cat > preserves the original file's permissions and ownership
+    cat "$tmp" > "$file"
+    echo "Converted: $file ($w spaces = 1 tab)"
+  fi
+  rm -f "$tmp"
+  converted=$((converted + 1))
+}
+
+for target in "$@"; do
+  if [[ -f "$target" ]]; then
+    convert_file "$target"
+  elif [[ -d "$target" ]]; then
+    if $recursive; then
+      while IFS= read -r -d '' f; do
+        convert_file "$f"
+      done < <(find "$target" -type f -not -path '*/.git/*' -print0)
+    else
+      echo "Skipping directory (use -r to recurse): $target" >&2
+    fi
+  else
+    echo "Not found: $target" >&2
+  fi
+done
+
+if $dry_run; then
+  echo "Done. Files that would be converted: $converted"
+else
+  echo "Done. Files converted: $converted"
+fi
