@@ -1,0 +1,8 @@
+#!/use/bin/env bash
+
+if ! grep -q "FZF_DEFAULT_COMMAND" ~/.bashrc; then
+	echo -e "\nexport FZF_DEFAULT_COMMAND=\"find .\"" >> ~/.bashrc
+	source ~/.bashrc
+fi
+
+fzf --ansi --exact --preview="cat {}"
