@@ -18,17 +18,17 @@ recursive=false
 dry_run=false
 
 usage() {
-  sed -n '3,14p' "$0" | sed 's/^# \{0,1\}//'
-  exit "${1:-0}"
+	sed -n '3,14p' "$0" | sed 's/^# \{0,1\}//'
+	exit "${1:-0}"
 }
 
 while getopts "rnh" opt; do
-  case "$opt" in
-    r) recursive=true ;;
-    n) dry_run=true ;;
-    h) usage 0 ;;
-    *) usage 1 ;;
-  esac
+	case "$opt" in
+		r) recursive=true ;;
+		n) dry_run=true ;;
+		h) usage 0 ;;
+		*) usage 1 ;;
+	esac
 done
 shift $((OPTIND - 1))
 
@@ -37,51 +37,51 @@ shift $((OPTIND - 1))
 converted=0
 
 convert_file() {
-  local file="$1"
+	local file="$1"
 
-  # Skip binary files (grep -I treats binary files as non-matching)
-  if ! grep -Iq . "$file" 2>/dev/null; then
-    return
-  fi
+	# Skip binary files (grep -I treats binary files as non-matching)
+	if ! grep -Iq . "$file" 2>/dev/null; then
+		return
+	fi
 
-  # Skip files that don't contain any CRLF line endings
-  if ! grep -q $'\r$' "$file"; then
-    return
-  fi
+	# Skip files that don't contain any CRLF line endings
+	if ! grep -q $'\r$' "$file"; then
+		return
+	fi
 
-  if $dry_run; then
-    echo "Would convert: $file"
-  else
-    local tmp
-    tmp="$(mktemp)"
-    # Strip a trailing CR from each line, then replace the original
-    # (cat > preserves the original file's permissions and ownership)
-    sed 's/\r$//' "$file" > "$tmp"
-    cat "$tmp" > "$file"
-    rm -f "$tmp"
-    echo "Converted: $file"
-  fi
-  converted=$((converted + 1))
+	if $dry_run; then
+		echo "Would convert: $file"
+	else
+		local tmp
+		tmp="$(mktemp)"
+		# Strip a trailing CR from each line, then replace the original
+		# (cat > preserves the original file's permissions and ownership)
+		sed 's/\r$//' "$file" > "$tmp"
+		cat "$tmp" > "$file"
+		rm -f "$tmp"
+		echo "Converted: $file"
+	fi
+	converted=$((converted + 1))
 }
 
 for target in "$@"; do
-  if [[ -f "$target" ]]; then
-    convert_file "$target"
-  elif [[ -d "$target" ]]; then
-    if $recursive; then
-      while IFS= read -r -d '' f; do
-        convert_file "$f"
-      done < <(find "$target" -type f -not -path '*/.git/*' -print0)
-    else
-      echo "Skipping directory (use -r to recurse): $target" >&2
-    fi
-  else
-    echo "Not found: $target" >&2
-  fi
+	if [[ -f "$target" ]]; then
+		convert_file "$target"
+	elif [[ -d "$target" ]]; then
+		if $recursive; then
+			while IFS= read -r -d '' f; do
+				convert_file "$f"
+			done < <(find "$target" -type f -not -path '*/.git/*' -print0)
+		else
+			echo "Skipping directory (use -r to recurse): $target" >&2
+		fi
+	else
+		echo "Not found: $target" >&2
+	fi
 done
 
 if $dry_run; then
-  echo "Done. Files that would be converted: $converted"
+	echo "Done. Files that would be converted: $converted"
 else
-  echo "Done. Files converted: $converted"
+	echo "Done. Files converted: $converted"
 fi
