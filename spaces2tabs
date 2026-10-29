@@ -11,10 +11,10 @@
 # Leftover spaces that don't fill a whole indent level are kept as spaces.
 #
 # Usage:
-#   ./spaces2tabs.sh file1.py file2.js       # auto-detect the indent width per file
-#   ./spaces2tabs.sh -s 2 app.js             # force: every 2 spaces = 1 tab
-#   ./spaces2tabs.sh -r src/                 # convert all files in a directory, recursively
-#   ./spaces2tabs.sh -n -r .                 # dry run: list files that would change
+#   ./spaces2tabs.sh file1.py file2.js    # auto-detect the indent width per file
+#   ./spaces2tabs.sh -s 2 app.js          # force: every 2 spaces = 1 tab
+#   ./spaces2tabs.sh -r src/              # convert all files in a directory, recursively
+#   ./spaces2tabs.sh -n -r .              # dry run: list files that would change
 #
 # Options:
 #   -s N  Spaces per tab, or "auto" to detect per file (default: auto)

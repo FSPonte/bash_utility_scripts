@@ -3,9 +3,9 @@
 # crlf2lf.sh - Convert files from CRLF (Windows) to LF (Unix) line endings.
 #
 # Usage:
-#   ./crlf2lf.sh file1.txt file2.sh ...     # convert specific files
-#   ./crlf2lf.sh -r src/                    # convert all files in a directory, recursively
-#   ./crlf2lf.sh -n -r .                    # dry run: only list files that would change
+#   ./crlf2lf.sh file1.txt file2.sh ...    # convert specific files
+#   ./crlf2lf.sh -r src/                   # convert all files in a directory, recursively
+#   ./crlf2lf.sh -n -r .                   # dry run: only list files that would change
 #
 # Options:
 #   -r  Recurse into directories
